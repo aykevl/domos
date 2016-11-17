@@ -55,9 +55,9 @@ func DeviceServer(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 	log.Println("New device")
 
-	conn.WriteJSON(MessageValue{
-		Message: "time",
-		Value:   time.Now().Unix(),
+	conn.WriteJSON(MessageTimestamp{
+		Message:   "time",
+		Timestamp: time.Now().Unix(),
 	})
 
 	exitChan := make(chan struct{})
