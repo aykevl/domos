@@ -35,7 +35,7 @@ type ControlMessageNewLog struct {
 	Log     []*LogReplyRow `json:"log"`
 }
 
-func ControlServer(w http.ResponseWriter, r *http.Request) {
+func ControlServer(w http.ResponseWriter, r *http.Request, device *Device) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Could not upgrade control WebSocket: ", err)
@@ -47,7 +47,7 @@ func ControlServer(w http.ResponseWriter, r *http.Request) {
 	send := make(chan interface{})
 	defer close(recv)
 
-	go runControlServer(recv, send)
+	go runControlServer(recv, send, device)
 
 	go func() {
 		for msg := range send {
@@ -72,7 +72,7 @@ func ControlServer(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func runControlServer(recv chan ControlMessage, send chan interface{}) {
+func runControlServer(recv chan ControlMessage, send chan interface{}, device *Device) {
 	msg := <-recv
 	defer close(send)
 
@@ -84,16 +84,8 @@ func runControlServer(recv chan ControlMessage, send chan interface{}) {
 		return
 	}
 	// this may return nil
-	device := deviceSet.AddControl(msg.DeviceSerial, send)
-	if device == nil {
-		log.Println("Control didn't send proper device serial")
-		send <- ControlMessageError{
-			Message: "disconnected",
-			Error:   "not a valid connect message",
-		}
-		return
-	}
-	defer device.Close()
+	controlConnection := device.AddControl(send)
+	defer controlConnection.Close()
 
 	lastValueTimes := make(map[string]int64, len(msg.LastLogTimes))
 	for n, subscr := range msg.LastLogTimes {
@@ -101,8 +93,8 @@ func runControlServer(recv chan ControlMessage, send chan interface{}) {
 	}
 	send <- ControlMessageConnected{
 		Message:   "connected",
-		Logs:      device.Logs(lastValueTimes),
-		Actuators: device.actuators,
+		Logs:      controlConnection.Logs(lastValueTimes),
+		Actuators: controlConnection.actuators,
 	}
 
 	for msg := range recv {
@@ -112,7 +104,7 @@ func runControlServer(recv chan ControlMessage, send chan interface{}) {
 				log.Println("Control sent empty actuator data")
 				continue
 			}
-			device.SetActuator(msg.Name, msg.Value)
+			controlConnection.SetActuator(msg.Name, msg.Value)
 		default:
 			log.Println("Unknown control message:", msg.Message)
 		}

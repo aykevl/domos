@@ -70,26 +70,18 @@ func NewDeviceSet() *DeviceSet {
 	}
 }
 
-func (ds *DeviceSet) Connect(serial, name string) *DeviceConnection {
-	ds.lock.Lock()
-	defer ds.lock.Unlock()
-
-	// The ID should be long enough (and auto-generated) that brute-forcing it
-	// isn't feasible.
-
-	device := ds.getDevice(serial, name, true)
-	if device == nil {
-		return nil
-	}
+func (d *Device) Connect() *DeviceConnection {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 
 	// Now we have the device. Let's make the connection.
 	connection := &DeviceConnection{
-		Device:   device,
-		id:       device.nextConnectionId,
+		Device:   d,
+		id:       d.nextConnectionId,
 		SendChan: make(chan interface{}, 5),
 	}
-	device.connections[connection.id] = connection
-	device.nextConnectionId++
+	d.connections[connection.id] = connection
+	d.nextConnectionId++
 
 	return connection
 }
@@ -180,7 +172,7 @@ func (d *DeviceConnection) Close() {
 	d.Device.mayClose()
 }
 
-func (d *DeviceConnection) SendLogItem(sensorName string, value interface{}, logtime, interval time.Duration) {
+func (d *Device) SendLogItem(sensorName string, value interface{}, logtime, interval time.Duration) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
@@ -227,23 +219,17 @@ func (d *DeviceConnection) SetActuator(name string, data interface{}) {
 	}
 }
 
-func (ds *DeviceSet) AddControl(serial string, sendChan chan interface{}) *ControlConnection {
-	ds.lock.Lock()
-	defer ds.lock.Unlock()
+func (d *Device) AddControl(sendChan chan interface{}) *ControlConnection {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 
-	device := ds.getDevice(serial, "", false)
-	if device == nil {
-		return nil
-	}
-
-	// Now we have the device. Let's make the control connection.
 	control := &ControlConnection{
-		Device:   device,
-		id:       device.nextControlId,
+		Device:   d,
+		id:       d.nextControlId,
 		sendChan: sendChan,
 	}
-	device.controls[control.id] = control
-	device.nextControlId++
+	d.controls[control.id] = control
+	d.nextControlId++
 
 	return control
 }

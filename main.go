@@ -17,19 +17,23 @@ import (
 
 var flagLogType = flag.String("logtype", "sqlite3", "database type for logfile")
 var flagLogPath = flag.String("log", "", "log address")
-var flagAddress = flag.String("address", "unix:/run/domos/domos.sock", "address in the form type:address (e.g. unix:/path)")
+var flagServer = flag.String("server", "unix:/run/domos/domos.sock", "server address in the form type:address (e.g. unix:/path)")
+var flagMQTT = flag.String("mqtt", "tcp://localhost:1883", "MQTT URL")
+var flagMQTTID = flag.String("mqtt-id", "domo-server", "MQTT client ID")
+var flagMQTTTopicPrefix = flag.String("mqtt-topic-prefix", "", "MQTT topic prefix (e.g. /user/location)")
+var flagSerial = flag.String("serial", "", "serial (key) of the device")
+var flagVerbose = flag.Bool("verbose", false, "verbose logging")
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
 var db *sql.DB
-var deviceSet *DeviceSet
 
 func main() {
 	flag.Parse()
 
-	addressParts := strings.SplitN(*flagAddress, ":", 2)
+	addressParts := strings.SplitN(*flagServer, ":", 2)
 	if *flagLogPath == "" {
 		fmt.Fprintln(os.Stderr, "Empty log path argument.")
 		flag.PrintDefaults()
@@ -40,13 +44,16 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
-
-	serverType := addressParts[0]
-	serverAddress := addressParts[1]
-
-	router := mux.NewRouter()
-	router.HandleFunc("/api/ws/device", DeviceServer)
-	router.HandleFunc("/api/ws/control", ControlServer)
+	if len(*flagSerial) == 0 {
+		fmt.Fprintln(os.Stderr, "No serial for the device.")
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+	if len(*flagMQTTTopicPrefix) == 0 {
+		fmt.Fprintln(os.Stderr, "No MQTT topic prefix.")
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
 
 	// open database
 	var err error
@@ -55,7 +62,20 @@ func main() {
 		log.Fatal(err)
 	}
 
-	deviceSet = NewDeviceSet()
+	device := NewDeviceSet().getDevice(*flagSerial, "", true)
+	if device == nil {
+		log.Fatal("Could not load device, exiting.")
+	}
+
+	serverType := addressParts[0]
+	serverAddress := addressParts[1]
+
+	router := mux.NewRouter()
+	router.HandleFunc("/api/ws/control", func(w http.ResponseWriter, r *http.Request) {
+		ControlServer(w, r, device)
+	})
+
+	go serveMQTT(*flagMQTT, *flagMQTTID, *flagMQTTTopicPrefix, device)
 
 	if serverType == "unix" {
 		err := os.Remove(serverAddress)
