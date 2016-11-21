@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"strings"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -52,6 +53,9 @@ type MQTTServer struct {
 }
 
 func serveMQTT(address, mqttID, mqttTopicPrefix string, device *Device) {
+	if mqttTopicPrefix[len(mqttTopicPrefix)-1] != '/' {
+		mqttTopicPrefix += "/";
+	}
 	ms := &MQTTServer{
 		topicPrefix:      mqttTopicPrefix,
 		deviceConnection: device.Connect(),
@@ -72,9 +76,11 @@ func serveMQTT(address, mqttID, mqttTopicPrefix string, device *Device) {
 			continue
 		}
 
-		topic := mqttTopicPrefix + "/+"
-		if token := ms.client.Subscribe(topic, 1, nil); token.Wait() && token.Error() != nil {
-			log.Fatal("Could not subscribe to topic: ", topic)
+		for _, suffix := range []string{"s/+", "a/+"} {
+			topic := ms.topicPrefix + suffix
+			if token := ms.client.Subscribe(topic, 1, nil); token.Wait() && token.Error() != nil {
+				log.Fatal("Could not subscribe to topic: ", topic)
+			}
 		}
 
 		if *flagVerbose {
@@ -97,11 +103,24 @@ func (ms *MQTTServer) publishHandler(client mqtt.Client, msg mqtt.Message) {
 		log.Printf("MQTT: %s: %s", msg.Topic(), string(msg.Payload()))
 	}
 
-	msgSensorName := msg.Topic()[len(ms.topicPrefix)+1:]
-	msgSensorType := msgSensorName
+	topic := msg.Topic()[len(ms.topicPrefix):]
+
+	parts := strings.Split(topic, "/")
+	if parts[0] == "s" {
+		ms.handleSensor(parts[1], msg.Payload())
+	} else if parts[0] == "a" {
+		ms.handleActuator(parts[1], msg.Payload())
+	} else {
+		log.Println("unrecognized topic:", topic)
+	}
+}
+
+func (ms *MQTTServer) handleSensor(sensor string, payload []byte) {
+	msgSensorName := sensor
+	msgSensorType := sensor
 
 	message := DeviceMessage{}
-	err := json.Unmarshal(msg.Payload(), &message)
+	err := json.Unmarshal(payload, &message)
 	if err != nil {
 		log.Println("Could not read message from device:", err)
 		return
@@ -141,6 +160,17 @@ func (ms *MQTTServer) publishHandler(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 	ms.deviceConnection.SendLogItem(msgSensorName, message.Value, message.TimeNs(), message.IntervalNs())
+}
+
+func (ms *MQTTServer) handleActuator(actuator string, payload []byte) {
+	message := DeviceMessage{}
+	err := json.Unmarshal(payload, &message)
+	if err != nil {
+		log.Printf("Could not parse actuator %s: %s", actuator, err)
+		return
+	}
+
+	ms.deviceConnection.SetActuator(actuator, message.Value)
 }
 
 // Write goroutine
