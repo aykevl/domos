@@ -136,7 +136,7 @@ func (ds *DeviceSet) getDevice(serial, name string, insert bool) *Device {
 }
 
 func (d *Device) getSensors() []*Sensor {
-	rows, err := db.Query("SELECT id, name, humanName, type FROM sensors WHERE deviceId=?", d.dbId)
+	rows, err := db.Query("SELECT id, name, type, humanName, desiredValue FROM sensors WHERE deviceId=?", d.dbId)
 	if err != nil {
 		log.Printf("could not query sensors for device %d: %s", d.dbId, err)
 		return nil
@@ -147,7 +147,7 @@ func (d *Device) getSensors() []*Sensor {
 		sensor := &Sensor{
 			deviceId: d.dbId,
 		}
-		err := rows.Scan(&sensor.dbId, &sensor.name, &sensor.humanName, &sensor.sensorType)
+		err := rows.Scan(&sensor.dbId, &sensor.name, &sensor.sensorType, &sensor.humanName, &sensor.desiredValue)
 		if err != nil {
 			log.Println("could not read sensor:", err)
 			return nil

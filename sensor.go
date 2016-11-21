@@ -6,18 +6,20 @@ import (
 )
 
 type Sensor struct {
-	deviceId   int64
-	dbId       int64
-	name       string
-	humanName  string
-	sensorType string
+	deviceId     int64
+	dbId         int64
+	name         string
+	sensorType   string
+	humanName    string
+	desiredValue interface{}
 }
 
 type LogReply struct {
-	Name      string        `json:"name"`
-	HumanName string        `json:"humanName"`
-	Type      string        `json:"type"`
-	Log       []LogReplyRow `json:"log"`
+	Name         string        `json:"name"`
+	HumanName    string        `json:"humanName"`
+	DesiredValue interface{}   `json:"desiredValue"`
+	Type         string        `json:"type"`
+	Log          []LogReplyRow `json:"log"`
 }
 
 type LogReplyRow struct {
@@ -31,7 +33,7 @@ func GetSensor(deviceId int64, name string) *Sensor {
 		deviceId: deviceId,
 		name:     name,
 	}
-	err := db.QueryRow("SELECT id, humanName, type FROM sensors WHERE deviceId=? AND name=?", deviceId, name).Scan(&sensor.dbId, &sensor.humanName, &sensor.sensorType)
+	err := db.QueryRow("SELECT id, type, humanName, desiredValue FROM sensors WHERE deviceId=? AND name=?", deviceId, name).Scan(&sensor.dbId, &sensor.sensorType, &sensor.humanName, &sensor.desiredValue)
 	if err != nil {
 		log.Printf("could not query sensor ID for sensor '%s': %s", name, err)
 		return nil
@@ -48,10 +50,11 @@ func (s *Sensor) FetchLogs(lastValueTime int64) *LogReply {
 	defer rows.Close()
 
 	reply := LogReply{
-		Name:      s.name,
-		HumanName: s.humanName,
-		Type:      s.sensorType,
-		Log:       make([]LogReplyRow, 0),
+		Name:         s.name,
+		Type:         s.sensorType,
+		HumanName:    s.humanName,
+		DesiredValue: s.desiredValue,
+		Log:          make([]LogReplyRow, 0),
 	}
 	for rows.Next() {
 		var logTimeNs int64
