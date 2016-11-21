@@ -158,6 +158,10 @@ func (ms *MQTTServer) handleSensor(sensor string, payload []byte) {
 	if err != nil {
 		log.Println("could not insert sensor data:", err)
 		return
+	} else {
+		if *flagVerbose {
+			log.Printf("INSERT: sensor=%v timestamp=%v value=%v interval=%v", sensorId, int64(message.TimeNs()/time.Second), message.Value, message.IntervalNs())
+		}
 	}
 	ms.deviceConnection.SendLogItem(msgSensorName, message.Value, message.TimeNs(), message.IntervalNs())
 }
