@@ -180,14 +180,16 @@ func (ms *MQTTServer) handleActuator(actuator string, payload []byte) {
 // Write goroutine
 func (ms *MQTTServer) deviceSendServer() {
 	for msg := range ms.deviceConnection.SendChan {
-		b, err := json.Marshal(msg)
+		// Only send the 'value' field.
+		msg2 := MessageActuator{Value: msg.Value}
+
+		b, err := json.Marshal(msg2)
 		if err != nil {
 			// must not happen
 			log.Fatal("failed to marshal: ", err)
 		}
 
-		// TODO: untested
-		if token := ms.client.Publish(ms.topicPrefix+"/actuator", 1, false, b); token.Wait() && token.Error() != nil {
+		if token := ms.client.Publish(ms.topicPrefix+"a/"+msg.Name, 1, true, b); token.Wait() && token.Error() != nil {
 			log.Println("Could not send message to device:", token.Error())
 		}
 	}

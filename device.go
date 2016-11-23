@@ -31,7 +31,7 @@ type Device struct {
 type DeviceConnection struct {
 	id int
 	*Device
-	SendChan chan interface{}
+	SendChan chan MessageValue
 }
 
 type ControlConnection struct {
@@ -78,7 +78,7 @@ func (d *Device) Connect() *DeviceConnection {
 	connection := &DeviceConnection{
 		Device:   d,
 		id:       d.nextConnectionId,
-		SendChan: make(chan interface{}, 5),
+		SendChan: make(chan MessageValue, 5),
 	}
 	d.connections[connection.id] = connection
 	d.nextConnectionId++

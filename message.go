@@ -10,3 +10,7 @@ type MessageValue struct {
 	Name    string      `json:"name"`
 	Value   interface{} `json:"value"`
 }
+
+type MessageActuator struct {
+	Value interface{} `json:"value"`
+}
