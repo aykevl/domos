@@ -54,7 +54,7 @@ type MQTTServer struct {
 
 func serveMQTT(address, mqttID, mqttTopicPrefix string, device *Device) {
 	if mqttTopicPrefix[len(mqttTopicPrefix)-1] != '/' {
-		mqttTopicPrefix += "/";
+		mqttTopicPrefix += "/"
 	}
 	ms := &MQTTServer{
 		topicPrefix:      mqttTopicPrefix,
