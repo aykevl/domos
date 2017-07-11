@@ -83,8 +83,16 @@ func runControlServer(recv chan ControlMessage, send chan interface{}, device *D
 		}
 		return
 	}
-	// this may return nil
-	controlConnection := device.AddControl(send)
+
+	controlConnection := device.AddControl(msg.DeviceSerial, send)
+	if controlConnection == nil {
+		// password invalid
+		send <- ControlMessageError{
+			Message: "disconnected",
+			Error:   "connection refused - invalid password?",
+		}
+		return
+	}
 	defer controlConnection.Close()
 
 	lastValueTimes := make(map[string]int64, len(msg.LastLogTimes))

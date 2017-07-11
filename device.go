@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"database/sql"
 	"log"
 	"sync"
@@ -219,7 +220,14 @@ func (d *DeviceConnection) SetActuator(name string, data interface{}) {
 	}
 }
 
-func (d *Device) AddControl(sendChan chan interface{}) *ControlConnection {
+func (d *Device) AddControl(serial string, sendChan chan interface{}) *ControlConnection {
+	serialHash := idHash(serial)
+	if subtle.ConstantTimeCompare(serialHash[:], d.serialHash[:]) != 1 {
+		// Maybe a constant-time compare is unnecessary, but let's do it anyway
+		// to be sure.
+		return nil
+	}
+
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
