@@ -20,6 +20,8 @@ var flagLogPath = flag.String("log", "", "log address")
 var flagServer = flag.String("server", "unix:/run/domos/domos.sock", "server address in the form type:address (e.g. unix:/path)")
 var flagMQTT = flag.String("mqtt", "tcp://localhost:1883", "MQTT URL")
 var flagMQTTID = flag.String("mqtt-id", "domo-server", "MQTT client ID")
+var flagMQTTUser = flag.String("mqtt-user", "", "MQTT username")
+var flagMQTTPass = flag.String("mqtt-pass", "", "MQTT password")
 var flagMQTTTopicPrefix = flag.String("mqtt-topic-prefix", "", "MQTT topic prefix (e.g. /user/location)")
 var flagPassword = flag.String("password", "", "password of the device")
 var flagVerbose = flag.Bool("verbose", false, "verbose logging")
@@ -75,7 +77,7 @@ func main() {
 		ControlServer(w, r, device)
 	})
 
-	go serveMQTT(*flagMQTT, *flagMQTTID, *flagMQTTTopicPrefix, device)
+	go serveMQTT(*flagMQTT, *flagMQTTID, *flagMQTTUser, *flagMQTTPass, *flagMQTTTopicPrefix, device)
 
 	if serverType == "unix" {
 		err := os.Remove(serverAddress)

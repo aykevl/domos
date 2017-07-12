@@ -52,7 +52,7 @@ type MQTTServer struct {
 	client           mqtt.Client
 }
 
-func serveMQTT(address, mqttID, mqttTopicPrefix string, device *Device) {
+func serveMQTT(address, mqttID, mqttUser, mqttPass, mqttTopicPrefix string, device *Device) {
 	if mqttTopicPrefix[len(mqttTopicPrefix)-1] != '/' {
 		mqttTopicPrefix += "/"
 	}
@@ -62,9 +62,11 @@ func serveMQTT(address, mqttID, mqttTopicPrefix string, device *Device) {
 	}
 
 	opts := mqtt.NewClientOptions().AddBroker(address)
-	opts.SetClientID(mqttID)
-	opts.SetCleanSession(false)
-	opts.SetDefaultPublishHandler(ms.publishHandler)
+	opts.ClientID = mqttID
+	opts.CleanSession = false
+	opts.Username = mqttUser
+	opts.Password = mqttPass
+	opts.DefaultPublishHander = ms.publishHandler
 
 	go ms.deviceSendServer()
 
