@@ -8,7 +8,5 @@ See also:
 
   * [domo-web](https://github.com/aykevl/domo-web) for the web interface, which
     communicates with this backend.
-  * [domo-rpi](https://github.com/aykevl/domo-rpi) for the Raspberry Pi side,
-    which links to this backend and controls the microcontroller.
-  * [domo-avr](https://github.com/aykevl/domo-avr) for the microcontroller code
-    (Arduino).
+  * [domo](https://github.com/aykevl/domo) for the Arduino side, which talks to
+    the MQTT server.
