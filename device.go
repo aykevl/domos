@@ -21,7 +21,7 @@ type DeviceSet struct {
 type Device struct {
 	*DeviceSet
 	dbId             int64
-	serialHash       [32]byte
+	passwordHash     [32]byte
 	nextConnectionId int
 	connections      map[int]*DeviceConnection
 	nextControlId    int
@@ -87,20 +87,20 @@ func (d *Device) Connect() *DeviceConnection {
 	return connection
 }
 
-func (ds *DeviceSet) getDevice(serial, name string, insert bool) *Device {
-	if serial == "" {
+func (ds *DeviceSet) getDevice(password, name string, insert bool) *Device {
+	if password == "" {
 		return nil
 	}
 
-	serialHash := idHash(serial)
+	passwordHash := idHash(password)
 	var deviceId int64
 	var deviceName string
-	err := db.QueryRow("SELECT id,name FROM devices WHERE serial=?", serial).Scan(&deviceId, &deviceName)
+	err := db.QueryRow("SELECT id,name FROM devices WHERE serial=?", password).Scan(&deviceId, &deviceName)
 	if err == sql.ErrNoRows {
 		if !insert {
 			return nil
 		}
-		result, err := db.Exec("INSERT INTO devices (serial, name) VALUES (?, ?)", serial, name)
+		result, err := db.Exec("INSERT INTO devices (serial, name) VALUES (?, ?)", password, name)
 		if err != nil {
 			log.Println("could not add device: ", err)
 			return nil
@@ -111,7 +111,7 @@ func (ds *DeviceSet) getDevice(serial, name string, insert bool) *Device {
 			return nil
 		}
 	} else if err != nil {
-		log.Printf("could not query device row for '%s' (%s): %s", name, serial, err)
+		log.Printf("could not query device row for '%s' (%s): %s", name, password, err)
 		return nil
 	}
 	if deviceName != name && name != "" && insert {
@@ -121,17 +121,17 @@ func (ds *DeviceSet) getDevice(serial, name string, insert bool) *Device {
 		}
 	}
 
-	device, ok := ds.devices[serialHash]
+	device, ok := ds.devices[passwordHash]
 	if !ok {
 		device = &Device{
-			dbId:        deviceId,
-			serialHash:  serialHash,
-			DeviceSet:   ds,
-			connections: make(map[int]*DeviceConnection),
-			controls:    make(map[int]*ControlConnection),
-			actuators:   make(map[string]interface{}),
+			dbId:         deviceId,
+			passwordHash: passwordHash,
+			DeviceSet:    ds,
+			connections:  make(map[int]*DeviceConnection),
+			controls:     make(map[int]*ControlConnection),
+			actuators:    make(map[string]interface{}),
 		}
-		ds.devices[device.serialHash] = device
+		ds.devices[device.passwordHash] = device
 	}
 	return device
 }
@@ -161,7 +161,7 @@ func (d *Device) getSensors() []*Sensor {
 func (d *Device) mayClose() {
 	if len(d.connections) == 0 && len(d.controls) == 0 {
 		// No connections remaining, close Device
-		delete(d.devices, d.serialHash)
+		delete(d.devices, d.passwordHash)
 	}
 }
 
@@ -220,9 +220,9 @@ func (d *DeviceConnection) SetActuator(name string, data interface{}) {
 	}
 }
 
-func (d *Device) AddControl(serial string, sendChan chan interface{}) *ControlConnection {
-	serialHash := idHash(serial)
-	if subtle.ConstantTimeCompare(serialHash[:], d.serialHash[:]) != 1 {
+func (d *Device) AddControl(password string, sendChan chan interface{}) *ControlConnection {
+	passwordHash := idHash(password)
+	if subtle.ConstantTimeCompare(passwordHash[:], d.passwordHash[:]) != 1 {
 		// Maybe a constant-time compare is unnecessary, but let's do it anyway
 		// to be sure.
 		return nil

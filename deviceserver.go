@@ -13,7 +13,7 @@ import (
 type DeviceMessage struct {
 	Message  string      `json:"message"`  // message type: 'connect', 'sensorLog'
 	Name     string      `json:"name"`     // device human name / sensor name / actuator name
-	Serial   string      `json:"serial"`   // device serial number (id)
+	Password string      `json:"password"` // device password
 	Time     int64       `json:"time"`     // log time
 	Type     string      `json:"type"`     // log type
 	Interval int64       `json:"interval"` // log interval

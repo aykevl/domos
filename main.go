@@ -21,7 +21,7 @@ var flagServer = flag.String("server", "unix:/run/domos/domos.sock", "server add
 var flagMQTT = flag.String("mqtt", "tcp://localhost:1883", "MQTT URL")
 var flagMQTTID = flag.String("mqtt-id", "domo-server", "MQTT client ID")
 var flagMQTTTopicPrefix = flag.String("mqtt-topic-prefix", "", "MQTT topic prefix (e.g. /user/location)")
-var flagSerial = flag.String("serial", "", "serial (key) of the device")
+var flagPassword = flag.String("password", "", "password of the device")
 var flagVerbose = flag.Bool("verbose", false, "verbose logging")
 
 var upgrader = websocket.Upgrader{
@@ -44,8 +44,8 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
-	if len(*flagSerial) == 0 {
-		fmt.Fprintln(os.Stderr, "No serial for the device.")
+	if len(*flagPassword) == 0 {
+		fmt.Fprintln(os.Stderr, "No password for the device.")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
@@ -62,7 +62,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	device := NewDeviceSet().getDevice(*flagSerial, "", true)
+	device := NewDeviceSet().getDevice(*flagPassword, "", true)
 	if device == nil {
 		log.Fatal("Could not load device, exiting.")
 	}

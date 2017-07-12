@@ -10,7 +10,7 @@ import (
 type ControlMessage struct {
 	Message      string                 `json:"message"`      // 'connect', 'actuator'
 	Name         string                 `json:"name"`         // actuator name
-	DeviceSerial string                 `json:"deviceSerial"` // serial number
+	Password     string                 `json:"password"`     // client password (no username)
 	LastLogTimes map[string]LastLogTime `json:"lastLogTimes"` // last timestamp of a sensor log
 	Value        interface{}            `json:"value"`        // actuator
 }
@@ -84,7 +84,7 @@ func runControlServer(recv chan ControlMessage, send chan interface{}, device *D
 		return
 	}
 
-	controlConnection := device.AddControl(msg.DeviceSerial, send)
+	controlConnection := device.AddControl(msg.Password, send)
 	if controlConnection == nil {
 		// password invalid
 		send <- ControlMessageError{
