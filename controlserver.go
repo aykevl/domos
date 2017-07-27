@@ -4,6 +4,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/websocket"
 )
 
 // Received message from control
@@ -52,6 +54,10 @@ func ControlServer(w http.ResponseWriter, r *http.Request, device *Device) {
 	go func() {
 		for msg := range send {
 			err := conn.WriteJSON(msg)
+			if err == websocket.ErrCloseSent {
+				// TODO: log warning message that is not logged by default
+				return
+			}
 			if err != nil {
 				log.Println("Could not send message: ", err)
 				continue
